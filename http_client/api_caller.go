@@ -5,7 +5,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
+
+	_ "github.com/joho/godotenv/autoload"
 )
 
 type QueryParams struct {
@@ -49,7 +52,8 @@ func CallApi(method string, path string, queryParams QueryParams) (string, error
 		return "", err
 	}
 
-	req.Header.Add("authorization", "foobar")
+	auth := os.Getenv("API_KEY")
+	req.Header.Add("authorization", auth)
 
 	resp, err := client.Do(req)
 	if err != nil {

@@ -1,6 +1,7 @@
 package http_client
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/TylerBrock/colorjson"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -32,13 +34,13 @@ func (qp *QueryParams) ToMap() map[string]string {
 
 func CallApi(method string, path string, queryParams QueryParams) (string, error) {
 	client := &http.Client{}
-	u, err := url.Parse("http://localhost:8443")
+	host := os.Getenv("HOST")
+	u, err := url.Parse(host)
 	if err != nil {
 		return "", err
 	}
 
 	u.Path = path
-
 	q := u.Query()
 	for key, value := range queryParams.ToMap() {
 		q.Set(key, value)
@@ -46,7 +48,6 @@ func CallApi(method string, path string, queryParams QueryParams) (string, error
 	u.RawQuery = q.Encode()
 
 	fmt.Print(u.String())
-
 	req, err := http.NewRequest(method, u.String(), nil)
 	if err != nil {
 		return "", err
@@ -65,6 +66,15 @@ func CallApi(method string, path string, queryParams QueryParams) (string, error
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("%s", body)
+
+	// Parsing JSON. Move this to a separate function
+	f := colorjson.NewFormatter()
+	f.Indent = 2
+
+	var responseData map[string]interface{}
+	json.Unmarshal([]byte(body), &responseData)
+	d, _ := f.Marshal(responseData)
+	fmt.Println(string(d))
+
 	return u.String(), nil
 }

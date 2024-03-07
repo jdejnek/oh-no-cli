@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/jdejnek/ono/http_client"
@@ -8,8 +9,10 @@ import (
 )
 
 var (
-	limit  string
-	offset string
+	limit     string
+	offset    string
+	next_page string
+	id        string
 
 	Commands = []*cli.Command{
 		{
@@ -26,7 +29,7 @@ var (
 								"offset": offset,
 							},
 						}
-						defer http_client.CallApi("GET", "/sims", queryParams)
+						defer http_client.CallApiWithParams("GET", "/sims", queryParams)
 						return nil
 					},
 					Flags: []cli.Flag{
@@ -45,10 +48,11 @@ var (
 							Destination: &offset,
 						},
 						&cli.StringFlag{
-							Name:    "write",
-							Value:   "false",
-							Aliases: []string{"w"},
-							Usage:   "Write JSON output to file",
+							Name:        "next_page",
+							Value:       "",
+							Aliases:     []string{"n"},
+							Usage:       "View next page of results",
+							Destination: &next_page,
 						},
 					},
 				},
@@ -56,13 +60,34 @@ var (
 					Name:  "sim",
 					Usage: "Fetch sim by id or label",
 					Action: func(cCtx *cli.Context) error {
+						if id == "" {
+							return errors.New("missing flag: -id")
+						}
+						http_client.CallApiWithPath("GET", "/sims/", id)
 						return nil
+					},
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:        "id",
+							Aliases:     []string{"i"},
+							Value:       "",
+							Usage:       "Provide sim id",
+							Destination: &id,
+						},
 					},
 				},
 				{
 					Name:  "find",
 					Usage: "Search for sims matching flag criteria",
 					Action: func(cCtx *cli.Context) error {
+						return nil
+					},
+				},
+				{
+					Name:  "connectors",
+					Usage: "List connectors",
+					Action: func(cCtx *cli.Context) error {
+						http_client.CallApiWithPath("GET", "/connectors", "")
 						return nil
 					},
 				},

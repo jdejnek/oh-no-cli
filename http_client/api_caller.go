@@ -32,12 +32,11 @@ func (qp *QueryParams) ToMap() map[string]string {
 	return result
 }
 
-func CallApi(method string, path string, queryParams QueryParams) (string, error) {
-	client := &http.Client{}
+func buildURL(path string, queryParams QueryParams) string {
 	host := os.Getenv("HOST")
 	u, err := url.Parse(host)
 	if err != nil {
-		return "", err
+		return err.Error()
 	}
 
 	u.Path = path
@@ -47,8 +46,26 @@ func CallApi(method string, path string, queryParams QueryParams) (string, error
 	}
 	u.RawQuery = q.Encode()
 
-	fmt.Print(u.String())
-	req, err := http.NewRequest(method, u.String(), nil)
+	return u.String()
+}
+
+func parseJSON(body []byte) string {
+	f := colorjson.NewFormatter()
+	f.Indent = 2
+
+	var responseData map[string]interface{}
+	json.Unmarshal([]byte(body), &responseData)
+
+	d, _ := f.Marshal(responseData)
+
+	return string(d)
+}
+
+func CallApiWithParams(method string, path string, queryParams QueryParams) (string, error) {
+	client := &http.Client{}
+
+	urlString := buildURL(path, queryParams)
+	req, err := http.NewRequest(method, urlString, nil)
 	if err != nil {
 		return "", err
 	}
@@ -67,14 +84,51 @@ func CallApi(method string, path string, queryParams QueryParams) (string, error
 		return "", err
 	}
 
-	// Parsing JSON. Move this to a separate function
-	f := colorjson.NewFormatter()
-	f.Indent = 2
+	output := parseJSON(body)
+	fmt.Println(string(output))
 
-	var responseData map[string]interface{}
-	json.Unmarshal([]byte(body), &responseData)
-	d, _ := f.Marshal(responseData)
-	fmt.Println(string(d))
+	return string(output), nil
+}
 
-	return u.String(), nil
+func CallApiWithPath(method string, path string, subpath string) string {
+	client := &http.Client{}
+
+	host := os.Getenv("HOST")
+	u, err := url.Parse(host)
+	if err != nil {
+		return err.Error()
+	}
+
+	extendedPath := fmt.Sprintf("%s%s", path, subpath)
+	u.Path = extendedPath
+
+	req, err := http.NewRequest(method, u.String(), nil)
+	if err != nil {
+		return err.Error()
+	}
+
+	fmt.Println(u.String())
+	auth := os.Getenv("API_KEY")
+	req.Header.Add("authorization", auth)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err.Error()
+	}
+
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err.Error()
+	}
+
+	if path == "/connectors" {
+		fmt.Println(string(body))
+		return string(body)
+	}
+
+	output := parseJSON(body)
+	fmt.Println(output)
+
+	return output
 }
